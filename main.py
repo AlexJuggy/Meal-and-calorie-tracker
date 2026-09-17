@@ -28,9 +28,28 @@ def get_db():
         db.close()
 
 
+@app.get("/users/")
+def get_users(db: Session = Depends(get_db)):
+    db_users=s=db.query(database_models.User).all()
+    return db_users
+
+@app.get("/users/{id}")
+def get_user(id: int,db: Session = Depends(get_db)):
+    db_user=s=db.query(database_models.User).filter(database_models.User.id==id).first()
+    if db_user:
+        return db_user
+    return "Not found"
+
+
 
 @app.post("/users/")
 def add_user(user: User,db: Session = Depends(get_db)):
     db.add(database_models.User(**user.model_dump()))
     db.commit()
     return user
+
+@app.post("/meals/")
+def add_user(meal: Meal,db: Session = Depends(get_db)):
+    db.add(database_models.Meal(**meal.model_dump()))
+    db.commit()
+    return meal
