@@ -1,5 +1,5 @@
 from fastapi import Depends, FastAPI
-from models import User, Meal
+from models import User, Meal, UserCreate, MealCreate
 from database import session, engine
 import database_models
 from sqlalchemy import func
@@ -45,22 +45,27 @@ def get_user(id: int,db: Session = Depends(get_db)):
 
 @app.get("/meals/{user_id}/{logged_in}")
 def get_user_meals(user_id: int,logged_in: date ,db: Session = Depends(get_db)):
-    db_user=s=db.query(database_models.Meal).filter(database_models.Meal.user_id==user_id ,database_models.Meal.logged_in==logged_in).all()
+    db_user=db.query(database_models.Meal).filter(database_models.Meal.user_id==user_id ,database_models.Meal.logged_in==logged_in).all()
     if db_user:
         return db_user
     return "Not found"
 
 @app.post("/users/")
-def add_user(user: User,db: Session = Depends(get_db)):
-    db.add(database_models.User(**user.model_dump()))
+def add_user(user: UserCreate,db: Session = Depends(get_db)):
+    new_user = database_models.User(**user.model_dump())
+    db.add(new_user)
     db.commit()
-    return user
+    db.refresh(new_user)
+    return new_user
 
 @app.post("/meals/")
-def add_meal(meal: Meal,db: Session = Depends(get_db)):
-    db.add(database_models.Meal(**meal.model_dump()))
+def add_meal(meal: MealCreate,db: Session = Depends(get_db)):
+    new_meal = database_models.Meal(**meal.model_dump())
+    db.add(new_meal)
+
     db.commit()
-    return meal
+    db.refresh(new_meal)
+    return new_meal
 
 @app.put("/meals/{id}")
 def update_meal(id: int, meal:Meal,db: Session = Depends(get_db)):
@@ -85,8 +90,8 @@ def delete_meal(id: int, db: Session = Depends(get_db)):
     return "Not found"
     
 @app.get("/users/{user_id}/summary")
-def summary(user_id: int,db: Session = Depends(get_db)):
-    total_calories = db.query(func.sum(database_models.Meal.calories)).filter(database_models.Meal.user_id==user_id).scalar()
+def summary(user_id: int,target_date: date,db: Session = Depends(get_db)):
+    total_calories = db.query(func.sum(database_models.Meal.calories)).filter(database_models.Meal.user_id==user_id, database_models.Meal.logged_in == target_date).scalar()
     total_calories = total_calories or 0
     return {"total_calories":total_calories}
 
